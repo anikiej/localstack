@@ -4,6 +4,8 @@ import logging
 import threading
 import time
 import uuid
+from enum import Enum, auto
+from typing import Dict
 
 from localstack.aws.api import RequestContext
 from localstack.aws.api.awslambda import (
@@ -79,6 +81,28 @@ LAMBDA_DEFAULT_MEMORY_SIZE = 128
 LOG = logging.getLogger(__name__)
 
 
+class FeatureSupportState(int, Enum):
+    UNSUPPORTED = 0
+    WONT_SUPPORT = auto()
+    PARTIAL_SUPPORT = auto()
+    FULL_SUPPORT = auto()
+
+
+FeatureMap = Dict[str, FeatureSupportState]
+
+FEATURE_SUPPORT: FeatureMap = {
+    "CreateFunction.function_name": FeatureSupportState.FULL_SUPPORT,
+    "CreateFunction.role": FeatureSupportState.UNSUPPORTED,
+    "CreateFunction.code.ZipFile": FeatureSupportState.UNSUPPORTED,
+    "CreateFunction.code.S3Bucket": FeatureSupportState.UNSUPPORTED,
+    "CreateFunction.code.S3Key": FeatureSupportState.UNSUPPORTED,
+    "CreateFunction.code.S3ObjectVersion": FeatureSupportState.UNSUPPORTED,
+    "CreateFunction.code.ImageUri": FeatureSupportState.UNSUPPORTED,
+    "CreateFunction.code.VpcConfig": FeatureSupportState.WONT_SUPPORT,
+    "basdf": "bl;a",
+}
+
+
 class LambdaProvider(LambdaApi, ServiceLifecycleHook):
 
     lambda_service: LambdaService
@@ -128,12 +152,12 @@ class LambdaProvider(LambdaApi, ServiceLifecycleHook):
         if not package_type:
             package_type = PackageType.Zip
 
-        state = LambdaServiceBackend.get()
+        state = LambdaServiceBackend.get()  # TODO: move
 
         # defaults
         qualified_arn = qualified_lambda_arn(
             function_name, "$LATEST", context.account_id, context.region
-        )
+        )  # TODO
         env_vars = environment["Variables"] if environment and environment.get("Variables") else {}
 
         # --- code related parameter handling ---
@@ -262,14 +286,17 @@ class LambdaProvider(LambdaApi, ServiceLifecycleHook):
         marker: String = None,  # TODO
         max_items: MaxListItems = None,  # TODO
     ) -> ListFunctionsResponse:
-        # TODO: limit fields returned
-        # TODO: implement paging
-        state = LambdaServiceBackend.get()
-        return ListFunctionsResponse(
-            Functions=[
-                self._map_to_list_response(f.latest.config) for f in state.functions.values()
-            ]
-        )
+        return self.lambda_service.list_function_versions()  # TODO: mapping
+
+        #
+        # # TODO: limit fields returned
+        # # TODO: implement paging
+        # state = LambdaServiceBackend.get()
+        # return ListFunctionsResponse(
+        #     Functions=[
+        #         self._map_to_list_response(f.latest.config) for f in state.functions.values()
+        #     ]
+        # )
 
     def get_function(
         self,
@@ -336,6 +363,9 @@ class LambdaProvider(LambdaApi, ServiceLifecycleHook):
         function_name: FunctionName,
         qualifier: Qualifier = None,
     ) -> None:
+        # self.lambda_service.delete_function()
+
+        # self.lambda_service.resolve_
         state = LambdaServiceBackend.get()
         qualified_arn = (
             function_name

@@ -5,9 +5,10 @@ from concurrent.futures import Future
 from threading import RLock
 from typing import Dict, Optional
 
-from localstack.aws.api.awslambda import AliasConfiguration, FunctionCode, FunctionConfiguration
+from localstack.aws.api.awslambda import FunctionCode, FunctionConfiguration
 from localstack.services.awslambda.invocation.executor_endpoint import InvocationResult
 from localstack.services.awslambda.invocation.version_manager import LambdaVersionManager
+from localstack.services.awslambda.lambda_models import Alias
 from localstack.services.generic_proxy import RegionBackend
 from localstack.utils.tagging import TaggingService
 
@@ -37,6 +38,7 @@ class Invocation:
     invocation_type: str
 
 
+# actual definitions
 @dataclasses.dataclass
 class LambdaFunctionVersion:  # TODO: reconcile with FunctionVersion above
     config: FunctionConfiguration
@@ -47,7 +49,7 @@ class LambdaFunctionVersion:  # TODO: reconcile with FunctionVersion above
 class LambdaFunction:
     latest: LambdaFunctionVersion  # points to the '$LATEST' version
     versions: Dict[str, LambdaFunctionVersion] = dataclasses.field(default_factory=dict)
-    aliases: Dict[str, AliasConfiguration] = dataclasses.field(default_factory=dict)
+    aliases: Dict[str, Alias] = dataclasses.field(default_factory=dict)
     next_version: int = 1
     lock: threading.RLock = dataclasses.field(default_factory=threading.RLock)
 
@@ -101,6 +103,35 @@ class LambdaService:
 
         return version_manager
 
+    # external CRUD
+    def create_function(self, function_args):
+        ...
+
+    # def create_function_version(self, function_name): ...
+    def delete_function(self):
+        ...
+
+    def update_function(self, function_args):
+        ...  # always $LATEST
+
+    def get_function_version(self, function_name, version):
+        ...
+
+    def list_function_versions(self):
+        ...
+
+    def create_alias(self):
+        ...
+
+    def get_alias(self):
+        ...
+
+    def update_alias(self):
+        ...
+
+    def delete_alias(self):
+        ...
+
     def create_function_version(self, function_version_definition: FunctionVersion) -> None:
         with self.lambda_version_manager_lock:
             version_manager = self.lambda_version_managers.get(
@@ -118,6 +149,8 @@ class LambdaService:
                 function_version_definition.qualified_arn
             ] = version_manager
             version_manager.start()
+
+    # Commands
 
     def invoke(
         self,
