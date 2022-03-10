@@ -1,16 +1,13 @@
-import dataclasses
 import logging
-import threading
 from concurrent.futures import Future
+from dataclasses import replace
 from threading import RLock
-from typing import Dict, Optional
 
-from localstack.aws.api.awslambda import FunctionCode, FunctionConfiguration
 from localstack.services.awslambda.invocation.executor_endpoint import InvocationResult
 from localstack.services.awslambda.invocation.version_manager import LambdaVersionManager
-from localstack.services.awslambda.lambda_models import Alias
 from localstack.services.generic_proxy import RegionBackend
 from localstack.utils.tagging import TaggingService
+from .lambda_models import *
 
 LOG = logging.getLogger(__name__)
 
@@ -38,31 +35,9 @@ class Invocation:
     invocation_type: str
 
 
-# actual definitions
-@dataclasses.dataclass
-class LambdaFunctionVersion:  # TODO: reconcile with FunctionVersion above
-    config: FunctionConfiguration
-    code: FunctionCode
-
-
-@dataclasses.dataclass
-class LambdaFunction:
-    latest: LambdaFunctionVersion  # points to the '$LATEST' version
-    versions: Dict[str, LambdaFunctionVersion] = dataclasses.field(default_factory=dict)
-    aliases: Dict[str, Alias] = dataclasses.field(default_factory=dict)
-    next_version: int = 1
-    lock: threading.RLock = dataclasses.field(default_factory=threading.RLock)
-
-    # TODO: implement later
-    # provisioned_concurrency_configs: Dict[str, ProvisionedConcurrencyConfig]
-    # code_signing_config: Dict[str, CodeSigningConfig]
-    # function_event_invoke_config: Dict[str, EventInvokeConfig]
-    # function_concurrency: Dict[str, FunctionConcurrency]
-
-
 class LambdaServiceBackend(RegionBackend):
     # name => Function; Account/region are implicit through the Backend
-    functions: Dict[str, LambdaFunction] = {}
+    functions: Dict[str, Function] = {}
     # static tagging service instance
     TAGS = TaggingService()
 
@@ -103,18 +78,41 @@ class LambdaService:
 
         return version_manager
 
-    # external CRUD
-    def create_function(self, function_args):
-        ...
+    # CRUD
+    def _create_version(self, region_name: str, function_name: str, qualifier: str) -> Version:
+        return
 
-    # def create_function_version(self, function_name): ...
-    def delete_function(self):
-        ...
+    def create_function(self, region_name: str, function_name: str, ) -> Version:
+        state = LambdaServiceBackend.get(region_name)
 
-    def update_function(self, function_args):
-        ...  # always $LATEST
+        fn = Function(function_name=function_name)
+        # TODO: create initial version
+        version = self._create_version(region_name, function_name, '$LATEST')
+        fn.versions['$LATEST'] = version
+        state.functions[function_name] = fn
 
-    def get_function_version(self, function_name, version):
+        return version
+
+    def create_version(self, region_name: str, function_name: str, description: str) -> Version:
+        state = LambdaServiceBackend.get(region_name)
+        fn = state.functions[function_name]
+        with fn.lock:
+            latest = fn.versions['$LATEST']
+            qualifier = str(fn.next_version)
+            new_version = replace(latest, qualifier=qualifier, description=description)
+            fn.versions[qualifier] = new_version
+            fn.next_version += 1
+            return new_version
+
+    # TODO: is this sync?
+    def delete_function(self, region_name: str, function_name: str):
+        state = LambdaServiceBackend.get(region_name)
+        del state.functions[function_name] # TODO: downstream effects (graceful shutdown)
+
+    # def update_function(self, region_name: str, function_args):
+    #     ...
+
+    def get_function_version(self, region_name: str,  function_name, version):
         ...
 
     def list_function_versions(self):
@@ -123,14 +121,19 @@ class LambdaService:
     def create_alias(self):
         ...
 
-    def get_alias(self):
-        ...
+    def get_alias(self, region_name: str, function_name: str, alias_name: str):
+        state = LambdaServiceBackend.get(region_name)
+        return state.functions[function_name].aliases[alias_name]
 
-    def update_alias(self):
-        ...
+    def update_alias(self, region_name: str, function_name: str, alias_name: str, version: int, description):
+        state = LambdaServiceBackend.get(region_name)
+        fn = state.functions[function_name]
+        del fn.aliases[alias_name]
 
-    def delete_alias(self):
-        ...
+    def delete_alias(self, region_name: str, function_name: str, alias_name: str):
+        state = LambdaServiceBackend.get(region_name)
+        fn = state.functions[function_name]
+        del fn.aliases[alias_name]  # TODO: downstream effects (graceful shutdown)
 
     def create_function_version(self, function_version_definition: FunctionVersion) -> None:
         with self.lambda_version_manager_lock:

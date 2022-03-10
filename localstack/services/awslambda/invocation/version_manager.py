@@ -32,6 +32,11 @@ if TYPE_CHECKING:
 
 LOG = logging.getLogger(__name__)
 
+@dataclasses.dataclass(frozen=True)
+class State:
+    state: str
+    code: Optional[str] = None  # TODO: probably not a string
+    reason: Optional[str] = None
 
 @dataclasses.dataclass(frozen=True)
 class QueuedInvocation:
