@@ -3,7 +3,13 @@ import threading
 from typing import Any, Dict, List, Optional
 
 
-# TODO: this might not make much sense internally, probably better to separate this?
+@dataclasses.dataclass
+class Invocation:
+    payload: bytes
+    client_context: Optional[str]
+    invocation_type: str
+
+
 @dataclasses.dataclass
 class Code:
     image_uri: Optional[str]
@@ -55,8 +61,9 @@ class UpdateStatus:
     reason: Optional[str] = None
 
 
-class FunctionConfigurationParameter():
+class FunctionConfigurationParameter:
     """ configurable parts of FunctionConfiguration """
+    pass
 
 
 @dataclasses.dataclass(frozen=True)

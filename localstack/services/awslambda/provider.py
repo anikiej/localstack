@@ -75,32 +75,9 @@ from localstack.services.awslambda.lambda_utils import generate_lambda_arn
 from localstack.services.plugins import ServiceLifecycleHook
 from localstack.utils.strings import to_bytes, to_str
 
-LAMBDA_DEFAULT_TIMEOUT_SECONDS = 3
-LAMBDA_DEFAULT_MEMORY_SIZE = 128
+
 
 LOG = logging.getLogger(__name__)
-
-
-class FeatureSupportState(int, Enum):
-    UNSUPPORTED = 0
-    WONT_SUPPORT = auto()
-    PARTIAL_SUPPORT = auto()
-    FULL_SUPPORT = auto()
-
-
-FeatureMap = Dict[str, FeatureSupportState]
-
-FEATURE_SUPPORT: FeatureMap = {
-    "CreateFunction.function_name": FeatureSupportState.FULL_SUPPORT,
-    "CreateFunction.role": FeatureSupportState.UNSUPPORTED,
-    "CreateFunction.code.ZipFile": FeatureSupportState.UNSUPPORTED,
-    "CreateFunction.code.S3Bucket": FeatureSupportState.UNSUPPORTED,
-    "CreateFunction.code.S3Key": FeatureSupportState.UNSUPPORTED,
-    "CreateFunction.code.S3ObjectVersion": FeatureSupportState.UNSUPPORTED,
-    "CreateFunction.code.ImageUri": FeatureSupportState.UNSUPPORTED,
-    "CreateFunction.code.VpcConfig": FeatureSupportState.WONT_SUPPORT,
-}
-
 
 class LambdaProvider(LambdaApi, ServiceLifecycleHook):
 
@@ -126,7 +103,7 @@ class LambdaProvider(LambdaApi, ServiceLifecycleHook):
         timeout: Timeout = None,
         memory_size: MemorySize = None,
         publish: Boolean = None,
-        vpc_config: VpcConfig = None,
+        vpc_config: VpcConfig = None,  # TODO: ignored
         package_type: PackageType = None,
         dead_letter_config: DeadLetterConfig = None,  # TODO: ignored
         environment: Environment = None,
@@ -140,7 +117,6 @@ class LambdaProvider(LambdaApi, ServiceLifecycleHook):
         architectures: ArchitecturesList = None,
     ) -> FunctionConfiguration:
 
-        # TODO: who is responsible for indicating support?
         # TODO: who is responsible for *which* errors/validations?
         # initial checks
         if package_type == PackageType.Zip:
@@ -156,6 +132,7 @@ class LambdaProvider(LambdaApi, ServiceLifecycleHook):
 
         if publish:
             version = self.lambda_service.create_function_version(context.region, function_name)
+
 
         return FunctionConfiguration(
             # map

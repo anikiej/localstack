@@ -11,28 +11,8 @@ from .lambda_models import *
 
 LOG = logging.getLogger(__name__)
 
-
-@dataclasses.dataclass(frozen=True)
-class FunctionVersion:
-    qualified_arn: str  # qualified arn for the version
-    name: str
-    version: str
-    region: str
-    architecture: str  # architecture
-    role: str  # lambda role
-    environment: Dict[str, str]  # Environment set when creating the function
-    zip_file: Optional[bytes] = None
-    runtime: Optional[str] = None
-    handler: Optional[str] = None
-    image_uri: Optional[str] = None
-    image_config: Optional[Dict[str, str]] = None
-
-
-@dataclasses.dataclass
-class Invocation:
-    payload: bytes
-    client_context: Optional[str]
-    invocation_type: str
+LAMBDA_DEFAULT_TIMEOUT_SECONDS = 3
+LAMBDA_DEFAULT_MEMORY_SIZE = 128
 
 
 class LambdaServiceBackend(RegionBackend):
