@@ -89,10 +89,13 @@ class LambdaService:
         state = LambdaServiceBackend.get(region_name)
         del state.functions[function_name] # TODO: downstream effects (graceful shutdown)
 
+    def delete_version(self, region_name: str, function_name: str, version_qualifier: str):
+        ...
+
     # def update_function(self, region_name: str, function_args):
     #     ...
 
-    def get_function_version(self, region_name: str,  function_name, version):
+    def get_function_version(self, region_name: str,  function_name, version) -> Version:
         ...
 
     def list_function_versions(self):
@@ -113,7 +116,7 @@ class LambdaService:
     def delete_alias(self, region_name: str, function_name: str, alias_name: str):
         state = LambdaServiceBackend.get(region_name)
         fn = state.functions[function_name]
-        del fn.aliases[alias_name]  # TODO: downstream effects (graceful shutdown)
+        del fn.aliases[alias_name]
 
     def create_function_version(self, function_version_definition: FunctionVersion) -> None:
         with self.lambda_version_manager_lock:
