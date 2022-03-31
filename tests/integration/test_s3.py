@@ -1565,7 +1565,7 @@ class TestS3(unittest.TestCase):
         resp = self.s3_client.list_objects(Bucket=bucket_name, Marker="")
         self.assertEqual("", resp["Marker"])
 
-    def test_create_bucket_with_exsisting_name(self):
+    def test_create_bucket_with_existing_name(self):
         bucket_name = "bucket-%s" % short_uid()
         self.s3_client.create_bucket(
             Bucket=bucket_name,
